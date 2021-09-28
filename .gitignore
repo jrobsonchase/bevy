@@ -22,3 +22,6 @@ imported_assets
 
 example_showcase_config.ron
 example-showcase-reports/
+
+.direnv
+result
