@@ -1204,7 +1204,7 @@ impl From<&Name> for AnimationTargetId {
 }
 
 impl MapEntities for AnimationTarget {
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+    fn map_entities<M: EntityMapper + ?Sized>(&mut self, entity_mapper: &mut M) {
         self.player = entity_mapper.map_entity(self.player);
     }
 }

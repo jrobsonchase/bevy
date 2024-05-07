@@ -61,7 +61,7 @@ impl WindowRef {
 }
 
 impl MapEntities for WindowRef {
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+    fn map_entities<M: EntityMapper + ?Sized>(&mut self, entity_mapper: &mut M) {
         match self {
             Self::Entity(entity) => {
                 *entity = entity_mapper.map_entity(*entity);

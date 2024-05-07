@@ -1,6 +1,6 @@
 use crate::{DynamicScene, InstanceInfo, SceneSpawnError};
 use bevy_asset::Asset;
-use bevy_ecs::entity::EntityHashMap;
+use bevy_ecs::entity::{EntityHashMap, SceneEntityMapper};
 use bevy_ecs::{
     reflect::{AppTypeRegistry, ReflectComponent, ReflectMapEntities, ReflectResource},
     world::World,
@@ -130,7 +130,13 @@ impl Scene {
 
         for registration in type_registry.iter() {
             if let Some(map_entities_reflect) = registration.data::<ReflectMapEntities>() {
-                map_entities_reflect.map_all_entities(world, &mut instance_info.entity_map);
+                SceneEntityMapper::world_scope(
+                    &mut instance_info.entity_map,
+                    world,
+                    |world, mapper| {
+                        map_entities_reflect.map_all_entities(world, mapper);
+                    },
+                );
             }
         }
 

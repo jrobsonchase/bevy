@@ -1,6 +1,6 @@
 use crate::{
     component::Component,
-    entity::{Entity, EntityHashMap, MapEntities, SceneEntityMapper},
+    entity::{Entity, EntityMapper, MapEntities},
     world::World,
 };
 use bevy_reflect::FromType;
@@ -12,8 +12,8 @@ use bevy_reflect::FromType;
 /// See [`SceneEntityMapper`] and [`MapEntities`] for more information.
 #[derive(Clone)]
 pub struct ReflectMapEntities {
-    map_all_entities: fn(&mut World, &mut SceneEntityMapper),
-    map_entities: fn(&mut World, &mut SceneEntityMapper, &[Entity]),
+    map_all_entities: fn(&mut World, &mut dyn EntityMapper),
+    map_entities: fn(&mut World, &mut dyn EntityMapper, &[Entity]),
 }
 
 impl ReflectMapEntities {
@@ -26,8 +26,8 @@ impl ReflectMapEntities {
     /// An example of this: A scene can be loaded with `Parent` components, but then a `Parent` component can be added
     /// to these entities after they have been loaded. If you reload the scene using [`map_all_entities`](Self::map_all_entities), those `Parent`
     /// components with already valid entity references could be updated to point at something else entirely.
-    pub fn map_all_entities(&self, world: &mut World, entity_map: &mut EntityHashMap<Entity>) {
-        SceneEntityMapper::world_scope(entity_map, world, self.map_all_entities);
+    pub fn map_all_entities(&self, world: &mut World, mapper: &mut dyn EntityMapper) {
+        (self.map_all_entities)(world, mapper);
     }
 
     /// A general method for applying [`MapEntities`] behavior to elements in an [`EntityHashMap<Entity>`]. Unlike
@@ -39,12 +39,10 @@ impl ReflectMapEntities {
     pub fn map_entities(
         &self,
         world: &mut World,
-        entity_map: &mut EntityHashMap<Entity>,
+        mapper: &mut dyn EntityMapper,
         entities: &[Entity],
     ) {
-        SceneEntityMapper::world_scope(entity_map, world, |world, mapper| {
-            (self.map_entities)(world, mapper, entities);
-        });
+        (self.map_entities)(world, mapper, entities);
     }
 }
 

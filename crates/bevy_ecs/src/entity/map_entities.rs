@@ -31,7 +31,7 @@ use super::EntityHashMap;
 /// }
 ///
 /// impl MapEntities for Spring {
-///     fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+///     fn map_entities<M: EntityMapper + ?Sized>(&mut self, entity_mapper: &mut M) {
 ///         self.a = entity_mapper.map_entity(self.a);
 ///         self.b = entity_mapper.map_entity(self.b);
 ///     }
@@ -43,7 +43,7 @@ pub trait MapEntities {
     ///
     /// Implementors should look up any and all [`Entity`] values stored within `self` and
     /// update them to the mapped values via `entity_mapper`.
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M);
+    fn map_entities<M: EntityMapper + ?Sized>(&mut self, entity_mapper: &mut M);
 }
 
 /// An implementor of this trait knows how to map an [`Entity`] into another [`Entity`].
@@ -69,11 +69,18 @@ pub trait MapEntities {
 ///     fn map_entity(&mut self, entity: Entity) -> Entity {
 ///         self.map.get(&entity).copied().unwrap_or(entity)
 ///     }
+///
+///     fn get_map(&self) -> &EntityHashMap<Entity> {
+///         &self.map
+///     }
 /// }
 /// ```
 pub trait EntityMapper {
     /// Map an entity to another entity
     fn map_entity(&mut self, entity: Entity) -> Entity;
+
+    /// Get the set of entity mappings
+    fn get_map(&self) -> &EntityHashMap<Entity>;
 }
 
 impl EntityMapper for SceneEntityMapper<'_> {
@@ -95,6 +102,10 @@ impl EntityMapper for SceneEntityMapper<'_> {
         self.map.insert(entity, new);
 
         new
+    }
+
+    fn get_map(&self) -> &EntityHashMap<Entity> {
+        &self.map
     }
 }
 
@@ -161,7 +172,7 @@ impl<'m> SceneEntityMapper<'m> {
     pub fn world_scope<R>(
         entity_map: &'m mut EntityHashMap<Entity>,
         world: &mut World,
-        f: impl FnOnce(&mut World, &mut Self) -> R,
+        f: impl FnOnce(&mut World, &mut dyn EntityMapper) -> R,
     ) -> R {
         let mut mapper = Self::new(entity_map, world);
         let result = f(world, &mut mapper);

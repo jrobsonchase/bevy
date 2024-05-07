@@ -1,5 +1,5 @@
 use crate::{ron, DynamicSceneBuilder, Scene, SceneSpawnError};
-use bevy_ecs::entity::EntityHashMap;
+use bevy_ecs::entity::{EntityHashMap, SceneEntityMapper};
 use bevy_ecs::{
     entity::Entity,
     reflect::{AppTypeRegistry, ReflectComponent, ReflectMapEntities},
@@ -149,7 +149,9 @@ impl DynamicScene {
                 "we should be getting TypeId from this TypeRegistration in the first place",
             );
             if let Some(map_entities_reflect) = registration.data::<ReflectMapEntities>() {
-                map_entities_reflect.map_entities(world, entity_map, &entities);
+                SceneEntityMapper::world_scope(entity_map, world, |world, mapper| {
+                    map_entities_reflect.map_entities(world, mapper, &entities);
+                })
             }
         }
 
