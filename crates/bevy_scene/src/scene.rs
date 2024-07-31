@@ -135,8 +135,13 @@ impl Scene {
                     // If this component references entities in the scene,
                     // update them to the entities in the world.
                     if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
-                        SceneEntityMapper::world_scope(entity_map, world, |_, mapper| {
-                            map_entities.map_entities(component.as_partial_reflect_mut(), mapper);
+                        SceneEntityMapper::world_scope(entity_map, world, |world, mapper| {
+                            map_entities.map_entities(
+                                world,
+                                &type_registry,
+                                component.as_partial_reflect_mut(),
+                                mapper,
+                            );
                         });
                     }
                     reflect_component.apply_or_insert(

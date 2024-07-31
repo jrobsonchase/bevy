@@ -3,7 +3,9 @@ use crate::{
     entity::{DynEntityMapper, Entity, EntityHashMap, MapEntities, SceneEntityMapper},
     world::World,
 };
-use bevy_reflect::{FromReflect, FromType, PartialReflect};
+use bevy_reflect::{FromType, PartialReflect, Reflect, TypePath, TypeRegistry};
+
+use super::from_reflect_with_fallback;
 
 /// For a specific type of component, this maps any fields with values of type [`Entity`] to a new world.
 /// Since a given `Entity` ID is only valid for the world it came from, when performing deserialization
@@ -12,7 +14,7 @@ use bevy_reflect::{FromReflect, FromType, PartialReflect};
 /// See [`SceneEntityMapper`] and [`MapEntities`] for more information.
 #[derive(Clone)]
 pub struct ReflectMapEntities {
-    map_entities: fn(&mut dyn PartialReflect, &mut dyn DynEntityMapper),
+    map_entities: fn(&mut World, &TypeRegistry, &mut dyn PartialReflect, &mut dyn DynEntityMapper),
     map_all_world_entities: fn(&mut World, &mut SceneEntityMapper),
     map_world_entities: fn(&mut World, &mut SceneEntityMapper, &[Entity]),
 }
@@ -28,10 +30,12 @@ impl ReflectMapEntities {
     /// with a "dead" entity.
     pub fn map_entities(
         &self,
+        world: &mut World,
+        type_registry: &TypeRegistry,
         component: &mut dyn PartialReflect,
         mapper: &mut dyn DynEntityMapper,
     ) {
-        (self.map_entities)(component, mapper);
+        (self.map_entities)(world, type_registry, component, mapper);
     }
 
     /// A general method for applying [`MapEntities`] behavior to all elements in an [`EntityHashMap<Entity>`].
@@ -71,11 +75,15 @@ impl ReflectMapEntities {
     }
 }
 
-impl<C: Component + MapEntities + FromReflect> FromType<C> for ReflectMapEntities {
+impl<C: Reflect + TypePath + Component + MapEntities> FromType<C> for ReflectMapEntities {
     fn from_type() -> Self {
         ReflectMapEntities {
-            map_entities: |component, mut entity_mapper| {
-                let mut concrete = C::from_reflect(component.as_partial_reflect()).unwrap();
+            map_entities: |world, type_registry, component, mut entity_mapper| {
+                let mut concrete = from_reflect_with_fallback::<C>(
+                    component.as_partial_reflect(),
+                    world,
+                    type_registry,
+                );
                 concrete.map_entities(&mut entity_mapper);
                 component.apply(&concrete);
             },
