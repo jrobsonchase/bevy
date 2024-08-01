@@ -1028,4 +1028,20 @@ mod tests {
         world.flush();
         assert_eq!(2, world.resource::<R>().0);
     }
+
+    #[test]
+    fn observer_mid_sync() {
+        let mut world = World::new();
+
+        world.observe(|trigger: Trigger<OnAdd, A>, query: Query<(), With<B>>| {
+            assert!(
+                query.get(trigger.entity()).is_ok(),
+                "insert order shouldn't matter because observers use the command queue"
+            );
+        });
+
+        world.flush();
+        world.spawn_empty().insert(A).insert(B);
+        world.flush();
+    }
 }

@@ -5,7 +5,7 @@ use crate::{
     component::{Component, ComponentId, ComponentTicks, Components, StorageType},
     entity::{Entities, Entity, EntityLocation},
     event::Event,
-    observer::{Observer, Observers},
+    observer::{EmitDynamicTrigger, Observer, Observers},
     query::Access,
     removal_detection::RemovedComponentEvents,
     storage::Storages,
@@ -16,7 +16,7 @@ use bevy_ptr::{OwningPtr, Ptr};
 use std::{any::TypeId, marker::PhantomData};
 use thiserror::Error;
 
-use super::{unsafe_world_cell::UnsafeEntityCell, Ref, ON_REMOVE, ON_REPLACE};
+use super::{unsafe_world_cell::UnsafeEntityCell, OnRemove, OnReplace, Ref, ON_REMOVE, ON_REPLACE};
 
 /// A read-only reference to a particular [`Entity`] and all of its components.
 ///
@@ -1253,11 +1253,16 @@ impl<'w> EntityWorldMut<'w> {
             }
             deferred_world.trigger_on_remove(archetype, self.entity, archetype.components());
             if archetype.has_remove_observer() {
-                deferred_world.trigger_observers(
-                    ON_REMOVE,
-                    self.entity,
-                    &archetype.components().collect::<Vec<ComponentId>>(),
-                );
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_REMOVE,
+                        OnRemove,
+                        (
+                            self.entity,
+                            archetype.components().collect::<Vec<ComponentId>>(),
+                        ),
+                    ));
             }
         }
 
@@ -1464,11 +1469,23 @@ unsafe fn trigger_on_replace_and_on_remove_hooks_and_observers(
 ) {
     deferred_world.trigger_on_replace(archetype, entity, bundle_info.iter_components());
     if archetype.has_replace_observer() {
-        deferred_world.trigger_observers(ON_REPLACE, entity, bundle_info.components());
+        deferred_world
+            .commands()
+            .add(EmitDynamicTrigger::new_with_id(
+                ON_REPLACE,
+                OnReplace,
+                (entity, bundle_info.components().to_vec()),
+            ));
     }
     deferred_world.trigger_on_remove(archetype, entity, bundle_info.iter_components());
     if archetype.has_remove_observer() {
-        deferred_world.trigger_observers(ON_REMOVE, entity, bundle_info.components());
+        deferred_world
+            .commands()
+            .add(EmitDynamicTrigger::new_with_id(
+                ON_REMOVE,
+                OnRemove,
+                (entity, bundle_info.components().to_vec()),
+            ));
     }
 }
 

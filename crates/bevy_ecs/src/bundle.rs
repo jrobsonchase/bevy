@@ -13,8 +13,8 @@ use crate::{
     },
     component::{Component, ComponentId, Components, StorageType, Tick},
     entity::{Entities, Entity, EntityLocation},
-    observer::Observers,
-    prelude::World,
+    observer::{EmitDynamicTrigger, Observers},
+    prelude::{OnAdd, OnInsert, OnReplace, World},
     query::DebugCheckedUnwrap,
     storage::{SparseSetIndex, SparseSets, Storages, Table, TableRow},
     world::{unsafe_world_cell::UnsafeWorldCell, ON_ADD, ON_INSERT, ON_REPLACE},
@@ -704,7 +704,13 @@ impl<'w> BundleInserter<'w> {
                 add_bundle.mutated.iter().copied(),
             );
             if archetype.has_replace_observer() {
-                deferred_world.trigger_observers(ON_REPLACE, entity, &add_bundle.mutated);
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_REPLACE,
+                        OnReplace,
+                        (entity, add_bundle.mutated.clone()),
+                    ));
             }
         }
 
@@ -866,11 +872,23 @@ impl<'w> BundleInserter<'w> {
         unsafe {
             deferred_world.trigger_on_add(new_archetype, entity, add_bundle.added.iter().cloned());
             if new_archetype.has_add_observer() {
-                deferred_world.trigger_observers(ON_ADD, entity, &add_bundle.added);
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_ADD,
+                        OnAdd,
+                        (entity, add_bundle.added.clone()),
+                    ));
             }
             deferred_world.trigger_on_insert(new_archetype, entity, bundle_info.iter_components());
             if new_archetype.has_insert_observer() {
-                deferred_world.trigger_observers(ON_INSERT, entity, bundle_info.components());
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_INSERT,
+                        OnInsert,
+                        (entity, bundle_info.components().to_vec()),
+                    ));
             }
         }
 
@@ -986,11 +1004,23 @@ impl<'w> BundleSpawner<'w> {
         unsafe {
             deferred_world.trigger_on_add(archetype, entity, bundle_info.iter_components());
             if archetype.has_add_observer() {
-                deferred_world.trigger_observers(ON_ADD, entity, bundle_info.components());
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_ADD,
+                        OnAdd,
+                        (entity, bundle_info.components().to_vec()),
+                    ));
             }
             deferred_world.trigger_on_insert(archetype, entity, bundle_info.iter_components());
             if archetype.has_insert_observer() {
-                deferred_world.trigger_observers(ON_INSERT, entity, bundle_info.components());
+                deferred_world
+                    .commands()
+                    .add(EmitDynamicTrigger::new_with_id(
+                        ON_INSERT,
+                        OnInsert,
+                        (entity, bundle_info.components().to_vec()),
+                    ));
             }
         };
 
